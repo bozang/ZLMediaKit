@@ -17,9 +17,9 @@
 
 namespace mediakit{
 
-string makeAacConfig(const uint8_t *hex);
-void dumpAacConfig(const string &config, int length, uint8_t *out);
-void parseAacConfig(const string &config, int &samplerate, int &channels);
+string makeAacConfig(const uint8_t *hex, int length);
+int dumpAacConfig(const string &config, int length, uint8_t *out, int out_size);
+bool parseAacConfig(const string &config, int &samplerate, int &channels);
 
 /**
  * aac帧，包含adts头
@@ -71,18 +71,25 @@ public:
 
     /**
      * 构造aac类型的媒体
-     * @param aac_cfg aac两个字节的配置信息
+     * @param aac_cfg aac配置信息
      */
     AACTrack(const string &aac_cfg){
-        if(aac_cfg.size() < 2){
+        setAacCfg(aac_cfg);
+    }
+
+    /**
+     * 设置aac 配置信息
+     */
+    void setAacCfg(const string &aac_cfg){
+        if (aac_cfg.size() < 2) {
             throw std::invalid_argument("adts配置必须最少2个字节");
         }
-        _cfg = aac_cfg.substr(0,2);
+        _cfg = aac_cfg;
         onReady();
     }
 
     /**
-     * 获取aac两个字节的配置
+     * 获取aac 配置信息
      */
     const string &getAacCfg() const{
         return _cfg;
@@ -130,15 +137,19 @@ public:
     void inputFrame(const Frame::Ptr &frame) override{
         if (_cfg.empty()) {
             //未获取到aac_cfg信息
-            if (frame->prefixSize() >= ADTS_HEADER_LEN) {
-                //7个字节的adts头
-                _cfg = makeAacConfig((uint8_t *) (frame->data()));
+            if (frame->prefixSize()) {
+                //根据7个字节的adts头生成aac config
+                _cfg = makeAacConfig((uint8_t *) (frame->data()), frame->prefixSize());
                 onReady();
             } else {
                 WarnL << "无法获取adts头!";
             }
         }
-        AudioTrack::inputFrame(frame);
+
+        if (frame->size() > frame->prefixSize()) {
+            //除adts头外，有实际负载
+            AudioTrack::inputFrame(frame);
+        }
     }
 private:
     /**
@@ -185,8 +196,12 @@ public:
         _printer << "b=AS:" << bitrate << "\r\n";
         _printer << "a=rtpmap:" << payload_type << " MPEG4-GENERIC/" << sample_rate << "/" << channels << "\r\n";
 
-        char configStr[32] = {0};
-        snprintf(configStr, sizeof(configStr), "%02X%02X", (uint8_t)aac_cfg[0], (uint8_t)aac_cfg[1]);
+        string configStr;
+        char buf[4] = {0};
+        for(auto &ch : aac_cfg){
+            snprintf(buf, sizeof(buf), "%02X", (uint8_t)ch);
+            configStr.append(buf);
+        }
         _printer << "a=fmtp:" << payload_type << " streamtype=5;profile-level-id=1;mode=AAC-hbr;"
                  << "sizelength=13;indexlength=3;indexdeltalength=3;config=" << configStr << "\r\n";
         _printer << "a=control:trackID=" << (int)TrackAudio << "\r\n";

@@ -13,19 +13,6 @@
 
 namespace mediakit{
 
-AACRtmpDecoder::AACRtmpDecoder() {
-    _adts = obtainFrame();
-}
-
-AACFrame::Ptr AACRtmpDecoder::obtainFrame() {
-    //从缓存池重新申请对象，防止覆盖已经写入环形缓存的对象
-    auto frame = ResourcePoolHelper<AACFrame>::obtainObj();
-    frame->_prefix_size = ADTS_HEADER_LEN;
-    //预留7个字节的空位以便后续覆盖
-    frame->_buffer.assign(ADTS_HEADER_LEN,(char)0);
-    return frame;
-}
-
 static string getAacCfg(const RtmpPacket &thiz) {
     string ret;
     if (thiz.getMediaType() != FLV_CODEC_AAC) {
@@ -38,15 +25,17 @@ static string getAacCfg(const RtmpPacket &thiz) {
         WarnL << "bad aac cfg!";
         return ret;
     }
-    ret = thiz.strBuf.substr(2, 2);
+    ret = thiz.strBuf.substr(2);
     return ret;
 }
 
 bool AACRtmpDecoder::inputRtmp(const RtmpPacket::Ptr &pkt, bool) {
     if (pkt->isCfgFrame()) {
         _aac_cfg = getAacCfg(*pkt);
+        onGetAAC(nullptr, 0, 0);
         return false;
     }
+
     if (!_aac_cfg.empty()) {
         onGetAAC(pkt->strBuf.data() + 2, pkt->strBuf.size() - 2, pkt->timeStamp);
     }
@@ -54,15 +43,28 @@ bool AACRtmpDecoder::inputRtmp(const RtmpPacket::Ptr &pkt, bool) {
 }
 
 void AACRtmpDecoder::onGetAAC(const char* data, int len, uint32_t stamp) {
-    _adts->_dts = stamp;
-    //先追加数据
-    _adts->_buffer.append(data, len);
-    //覆盖adts头
-    dumpAacConfig(_aac_cfg, _adts->size(), (uint8_t *) _adts->data());
+    auto frame = ResourcePoolHelper<AACFrame>::obtainObj();
+    //生成adts头
+    char adts_header[32] = {0};
+    auto size = dumpAacConfig(_aac_cfg, len, (uint8_t *) adts_header, sizeof(adts_header));
+    if (size > 0) {
+        frame->_buffer.assign(adts_header, size);
+        frame->_prefix_size = size;
+    } else {
+        frame->_buffer.clear();
+        frame->_prefix_size = 0;
+    }
 
-    //写入环形缓存
-    RtmpCodec::inputFrame(_adts);
-    _adts = obtainFrame();
+    if(len > 0){
+        //追加负载数据
+        frame->_buffer.append(data, len);
+        frame->_dts = stamp;
+    }
+
+    if(size > 0 || len > 0){
+        //有adts头或者实际aac负载
+        RtmpCodec::inputFrame(frame);
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -84,9 +86,9 @@ void AACRtmpEncoder::makeConfigPacket() {
 
 void AACRtmpEncoder::inputFrame(const Frame::Ptr &frame) {
     if (_aac_cfg.empty()) {
-        if (frame->prefixSize() >= 7) {
+        if (frame->prefixSize()) {
             //包含adts头,从adts头获取aac配置信息
-            _aac_cfg = makeAacConfig((uint8_t *) (frame->data()));
+            _aac_cfg = makeAacConfig((uint8_t *) (frame->data()), frame->prefixSize());
         }
         makeConfigPacket();
     }

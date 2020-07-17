@@ -1,4 +1,4 @@
-![logo](https://raw.githubusercontent.com/zlmediakit/ZLMediaKit/master/logo.png)
+![logo](https://raw.githubusercontent.com/zlmediakit/ZLMediaKit/master/www/logo.png)
 
 # A lightweight ,high performance and stable stream server and client framework based on C++11.
 
@@ -128,7 +128,7 @@ It is recommended to compile on Ubuntu or MacOS，compiling on windows is cumber
 ### Before build
 - **You must use git to clone the complete code. Do not download the source code by downloading zip package. Otherwise, the sub-module code will not be downloaded by default.You can do it like this:**
 ```
-git clone https://github.com/zlmediakit/ZLMediaKit.git
+git clone https://github.com/xiongziliang/ZLMediaKit.git
 cd ZLMediaKit
 git submodule update --init
 ```

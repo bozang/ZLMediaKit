@@ -8,11 +8,12 @@
  * may be found in the AUTHORS file in the root of the source tree.
  */
 
+#include <sys/stat.h>
+#include <math.h>
 #include <signal.h>
 #include <functional>
 #include <sstream>
 #include <unordered_map>
-#include <math.h>
 #include "jsoncpp/json.h"
 #include "Util/util.h"
 #include "Util/logger.h"
@@ -33,6 +34,9 @@
 #include "Thread/WorkThreadPool.h"
 #include "Rtp/RtpSelector.h"
 #include "FFmpegSource.h"
+#if defined(ENABLE_RTPPROXY)
+#include "Rtp/RtpServer.h"
+#endif
 using namespace Json;
 using namespace toolkit;
 using namespace mediakit;
@@ -51,12 +55,13 @@ typedef enum {
 const string kApiDebug = API_FIELD"apiDebug";
 const string kSecret = API_FIELD"secret";
 const string kSnapRoot = API_FIELD"snapRoot";
+const string kDefaultSnap = API_FIELD"defaultSnap";
 
 static onceToken token([]() {
     mINI::Instance()[kApiDebug] = "1";
     mINI::Instance()[kSecret] = "035c73f7-bb6b-4889-a715-d9eb2d1925cc";
     mINI::Instance()[kSnapRoot] = "./www/snap/";
-
+    mINI::Instance()[kDefaultSnap] = "./www/logo.png";
 });
 }//namespace API
 
@@ -242,14 +247,23 @@ bool checkArgs(Args &&args,First &&first,KeyTypes && ...keys){
         } \
     }
 
+//拉流代理器列表
 static unordered_map<string ,PlayerProxy::Ptr> s_proxyMap;
 static recursive_mutex s_proxyMapMtx;
+
+//FFmpeg拉流代理器列表
+static unordered_map<string ,FFmpegSource::Ptr> s_ffmpegMap;
+static recursive_mutex s_ffmpegMapMtx;
+
+#if defined(ENABLE_RTPPROXY)
+//rtp服务器列表
+static unordered_map<string, RtpServer::Ptr> s_rtpServerMap;
+static recursive_mutex s_rtpServerMapMtx;
+#endif
+
 static inline string getProxyKey(const string &vhost,const string &app,const string &stream){
     return vhost + "/" + app + "/" + stream;
 }
-
-static unordered_map<string ,FFmpegSource::Ptr> s_ffmpegMap;
-static recursive_mutex s_ffmpegMapMtx;
 
 /**
  * 安装api接口
@@ -727,22 +741,68 @@ void installWebApi() {
     });
 
 #if defined(ENABLE_RTPPROXY)
-    api_regist1("/index/api/getSsrcInfo",[](API_ARGS1){
+    api_regist1("/index/api/getRtpInfo",[](API_ARGS1){
         CHECK_SECRET();
-        CHECK_ARGS("ssrc");
-        uint32_t ssrc = 0;
-        stringstream ss(allArgs["ssrc"]);
-        ss >> std::hex >> ssrc;
+        CHECK_ARGS("stream_id");
 
-        auto process = RtpSelector::Instance().getProcess(ssrc,false);
-        if(!process){
+        auto process = RtpSelector::Instance().getProcess(allArgs["stream_id"], false);
+        if (!process) {
             val["exist"] = false;
             return;
         }
         val["exist"] = true;
         val["peer_ip"] = process->get_peer_ip();
         val["peer_port"] = process->get_peer_port();
+        val["local_port"] = process->get_local_port();
+        val["local_ip"] = process->get_local_ip();
     });
+
+    api_regist1("/index/api/openRtpServer",[](API_ARGS1){
+        CHECK_SECRET();
+        CHECK_ARGS("port", "enable_tcp", "stream_id");
+
+        auto stream_id = allArgs["stream_id"];
+
+        lock_guard<recursive_mutex> lck(s_rtpServerMapMtx);
+        if(s_rtpServerMap.find(stream_id) != s_rtpServerMap.end()) {
+            //为了防止RtpProcess所有权限混乱的问题，不允许重复添加相同的stream_id
+            throw InvalidArgsException("该stream_id已存在");
+        }
+
+        RtpServer::Ptr server = std::make_shared<RtpServer>();
+        server->start(allArgs["port"], stream_id, allArgs["enable_tcp"].as<bool>());
+        server->setOnDetach([stream_id]() {
+            //设置rtp超时移除事件
+            lock_guard<recursive_mutex> lck(s_rtpServerMapMtx);
+            s_rtpServerMap.erase(stream_id);
+        });
+
+        //保存对象
+        s_rtpServerMap.emplace(stream_id, server);
+        //回复json
+        val["port"] = server->getPort();
+    });
+
+    api_regist1("/index/api/closeRtpServer",[](API_ARGS1){
+        CHECK_SECRET();
+        CHECK_ARGS("stream_id");
+
+        lock_guard<recursive_mutex> lck(s_rtpServerMapMtx);
+        val["hit"] = (int) s_rtpServerMap.erase(allArgs["stream_id"]);
+    });
+
+    api_regist1("/index/api/listRtpServer",[](API_ARGS1){
+        CHECK_SECRET();
+
+        lock_guard<recursive_mutex> lck(s_rtpServerMapMtx);
+        for (auto &pr : s_rtpServerMap) {
+            Value obj;
+            obj["stream_id"] = pr.first;
+            obj["port"] = pr.second->getPort();
+            val["data"].append(obj);
+        }
+    });
+
 #endif//ENABLE_RTPPROXY
 
     // 开始录制hls或MP4
@@ -819,13 +879,31 @@ void installWebApi() {
         val["data"]["paths"] = paths;
     });
 
-    GET_CONFIG(string, snap_root, API::kSnapRoot);
+    static auto responseSnap = [](const string &snap_path,
+                                  const HttpSession::KeyValue &headerIn,
+                                  const HttpSession::HttpResponseInvoker &invoker) {
+        StrCaseMap headerOut;
+        struct stat statbuf = {0};
+        GET_CONFIG(string, defaultSnap, API::kDefaultSnap);
+        if (!(stat(snap_path.data(), &statbuf) == 0 && statbuf.st_size != 0) && !defaultSnap.empty()) {
+            //空文件且设置了预设图，则返回预设图片(也就是FFmpeg生成截图中空档期的默认图片)
+            const_cast<string&>(snap_path) = File::absolutePath(defaultSnap, "");
+            headerOut["Content-Type"] = HttpFileManager::getContentType(snap_path.data());
+        } else {
+            //之前生成的截图文件，我们默认为jpeg格式
+            headerOut["Content-Type"] = HttpFileManager::getContentType(".jpeg");
+        }
+        //返回图片给http客户端
+        invoker.responseFile(headerIn, headerOut, snap_path);
+    };
 
     //获取截图缓存或者实时截图
     //http://127.0.0.1/index/api/getSnap?url=rtmp://127.0.0.1/record/robot.mp4&timeout_sec=10&expire_sec=3
     api_regist2("/index/api/getSnap", [](API_ARGS2){
         CHECK_SECRET();
         CHECK_ARGS("url", "timeout_sec", "expire_sec");
+        GET_CONFIG(string, snap_root, API::kSnapRoot);
+
         int expire_sec = allArgs["expire_sec"];
         auto scan_path = File::absolutePath(MD5(allArgs["url"]).hexdigest(), snap_root) + "/";
         string snap_path;
@@ -849,34 +927,27 @@ void installWebApi() {
         });
 
         if(!snap_path.empty()){
-            StrCaseMap headerOut;
-            headerOut["Content-Type"] = HttpFileManager::getContentType(".jpeg");
-            invoker.responseFile(headerIn,headerOut,snap_path);
-            return ;
+            responseSnap(snap_path, headerIn, invoker);
+            return;
         }
 
         //无截图或者截图已经过期
         snap_path = StrPrinter << scan_path << time(NULL) << ".jpeg";
 
-        {
-            //生成一个空文件，目的是顺便创建文件夹路径，
-            //同时防止在FFmpeg生成截图途中不停的尝试调用该api启动FFmpeg生成相同的截图
-            //当然，我们可以拷贝一个"正在截图中"的图来替换这个空图，这需要开发者自己实现
-            auto file = File::create_file(snap_path.data(), "wb");
-            if(file){
-                fclose(file);
-            }
+        //生成一个空文件，目的是顺便创建文件夹路径，
+        //同时防止在FFmpeg生成截图途中不停的尝试调用该api启动FFmpeg生成相同的截图
+        auto file = File::create_file(snap_path.data(), "wb");
+        if (file) {
+            fclose(file);
         }
 
+        //启动FFmpeg进程，开始截图
         FFmpegSnap::makeSnap(allArgs["url"],snap_path,allArgs["timeout_sec"],[invoker,headerIn,snap_path](bool success){
             if(!success){
                 //生成截图失败，可能残留空文件
                 File::delete_file(snap_path.data());
             }
-
-            StrCaseMap headerOut;
-            headerOut["Content-Type"] = HttpFileManager::getContentType(".jpeg");
-            invoker.responseFile(headerIn, headerOut, snap_path);
+            responseSnap(snap_path, headerIn, invoker);
         });
     });
 
@@ -1031,5 +1102,11 @@ void unInstallWebApi(){
     {
         lock_guard<recursive_mutex> lck(s_ffmpegMapMtx);
         s_ffmpegMap.clear();
+    }
+    {
+#if defined(ENABLE_RTPPROXY)
+        lock_guard<recursive_mutex> lck(s_rtpServerMapMtx);
+        s_rtpServerMap.clear();
+#endif
     }
 }
