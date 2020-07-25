@@ -43,8 +43,8 @@ namespace Http {
 const string kPort = HTTP_FIELD"port";
 const string kSSLPort = HTTP_FIELD"sslport";
 onceToken token1([](){
-    mINI::Instance()[kPort] = 80;
-    mINI::Instance()[kSSLPort] = 443;
+    mINI::Instance()[kPort] = 8500;
+    mINI::Instance()[kSSLPort] = 1443;
 },nullptr);
 }//namespace Http
 
@@ -85,7 +85,7 @@ namespace RtpProxy {
 #define RTP_PROXY_FIELD "rtp_proxy."
 const string kPort = RTP_PROXY_FIELD"port";
 onceToken token1([](){
-    mINI::Instance()[kPort] = 10000;
+    mINI::Instance()[kPort] = 20000;
 },nullptr);
 } //namespace RtpProxy
 
@@ -305,7 +305,7 @@ int start_main(int argc,char *argv[]) {
 
 #if defined(ENABLE_RTPPROXY)
             //创建rtp服务器
-            if(rtpPort){ rtpServer->start(rtpPort); }
+            if(rtpPort){ rtpServer->start(rtpPort,"1"); }
 #endif//defined(ENABLE_RTPPROXY)
 
         }catch (std::exception &ex){
