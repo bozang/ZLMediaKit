@@ -193,7 +193,23 @@ API_EXPORT int API_CALL mk_media_source_get_reader_count(const mk_media_source c
     MediaSource *src = (MediaSource *)ctx;
     return src->readerCount();
 }
-
+API_EXPORT int API_CALL mk_media_source_get_tracks(const mk_media_source ctx, void* info) {
+	assert(ctx);
+	MediaSource *src = (MediaSource *)ctx;
+	auto tracks = src->getTracks();
+	//info = malloc(sizeof(Trackinfo) * tracks.size());
+	Trackinfo* infos = (Trackinfo*)info;
+	//struct Trackinfo trackinfo[2];
+	for (size_t i = 0; i < tracks.size(); i++)
+	{
+		TrackType type = tracks[i]->getTrackType();
+		CodecId codeid = tracks[i]->getCodecId();
+		infos[i].code_id = codeid;
+		infos[i].track_type = type;
+	}
+	//info = (void*)infos;
+	return tracks.size();
+}
 API_EXPORT int API_CALL mk_media_source_get_total_reader_count(const mk_media_source ctx){
     assert(ctx);
     MediaSource *src = (MediaSource *)ctx;

@@ -97,6 +97,8 @@ API_EXPORT const char* API_CALL mk_media_source_get_stream(const mk_media_source
 API_EXPORT int API_CALL mk_media_source_get_reader_count(const mk_media_source ctx);
 //MediaSource::totalReaderCount()
 API_EXPORT int API_CALL mk_media_source_get_total_reader_count(const mk_media_source ctx);
+//MediaSource::gettracks()
+API_EXPORT int API_CALL mk_media_source_get_tracks(const mk_media_source ctx, void* info);
 /**
  * 直播源在ZLMediaKit中被称作为MediaSource，
  * 目前支持3种，分别是RtmpMediaSource、RtspMediaSource、HlsMediaSource
@@ -317,7 +319,11 @@ API_EXPORT mk_auth_invoker API_CALL mk_auth_invoker_clone(const mk_auth_invoker 
  * 销毁堆上的克隆对象
  */
 API_EXPORT void API_CALL mk_auth_invoker_clone_release(const mk_auth_invoker ctx);
-
+struct Trackinfo
+{
+	int track_type;
+	int code_id;
+};
 #ifdef __cplusplus
 }
 #endif

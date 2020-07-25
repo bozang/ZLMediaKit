@@ -31,7 +31,8 @@ static TcpServer::Ptr shell_server;
 
 #ifdef ENABLE_RTPPROXY
 #include "Rtp/RtpServer.h"
-static std::shared_ptr<RtpServer> rtpServer;
+//static std::shared_ptr<RtpServer> rtpServer;
+static map<string, std::shared_ptr<RtpServer>> map_rtpServer;
 #endif
 
 //////////////////////////environment init///////////////////////////
@@ -55,7 +56,8 @@ API_EXPORT void API_CALL mk_stop_all_server(){
     CLEAR_ARR(rtmp_server);
     CLEAR_ARR(http_server);
 #ifdef ENABLE_RTPPROXY
-    rtpServer = nullptr;
+    //rtpServer = nullptr;
+	map_rtpServer.clear();
 #endif
     stopAllTcpServer();
 }
@@ -178,12 +180,14 @@ API_EXPORT uint16_t API_CALL mk_rtmp_server_start(uint16_t port, int ssl) {
     }
 }
 
-API_EXPORT uint16_t API_CALL mk_rtp_server_start(uint16_t port){
+API_EXPORT uint16_t API_CALL mk_rtp_server_start(uint16_t port, const char* src){
 #ifdef ENABLE_RTPPROXY
+	std::shared_ptr<RtpServer> rtpServer;
     try {
         //创建rtp 服务器
         rtpServer = std::make_shared<RtpServer>();
-        rtpServer->start(port);
+        rtpServer->start(port,src);
+		map_rtpServer.insert(pair<string, std::shared_ptr<RtpServer>>(src, rtpServer));
         return rtpServer->getPort();
     } catch (std::exception &ex) {
         rtpServer.reset();
@@ -193,6 +197,34 @@ API_EXPORT uint16_t API_CALL mk_rtp_server_start(uint16_t port){
 #else
     WarnL << "未启用该功能!";
     return 0;
+#endif
+}
+
+API_EXPORT uint16_t API_CALL mk_rtp_server_stop(const char* src) {
+#ifdef ENABLE_RTPPROXY
+	std::shared_ptr<RtpServer> rtpServer;
+	try {
+		bool ret = false;
+		map<string, std::shared_ptr<RtpServer>>::iterator udpRet = map_rtpServer.find(src);
+		if (udpRet != map_rtpServer.end()) {
+			rtpServer = udpRet->second;
+			rtpServer = nullptr;
+			map_rtpServer.erase(src);
+			ret = true;
+		}
+		else {
+			return false;
+		}
+		return ret;
+	}
+	catch (std::exception &ex) {
+		rtpServer.reset();
+		WarnL << ex.what();
+		return false;
+	}
+#else
+	WarnL << "未启用该功能!";
+	return 0;
 #endif
 }
 

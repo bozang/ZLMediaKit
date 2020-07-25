@@ -137,7 +137,8 @@ API_EXPORT uint16_t API_CALL mk_rtmp_server_start(uint16_t port, int ssl);
  * @param port rtp监听端口(包括udp/tcp)
  * @return 0:失败,非0:端口号
  */
-API_EXPORT uint16_t API_CALL mk_rtp_server_start(uint16_t port);
+API_EXPORT uint16_t API_CALL mk_rtp_server_start(uint16_t port, const char* src);
+API_EXPORT uint16_t API_CALL mk_rtp_server_stop(const char* src);
 
 /**
  * 创建shell服务器
