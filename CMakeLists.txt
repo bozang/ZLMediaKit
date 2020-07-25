@@ -227,6 +227,7 @@ execute_process(COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/conf/config.ini ${EXECUTA
 #添加c库
 if(ENABLE_API)
     add_subdirectory(api)
+	include_external_msproject(CSharpServer CSharpServer/CSharpServer.csproj TYPE F3B9F740-C99A-4EA2-8796-41C0182D8F4D)
 endif()
 
 if (NOT IOS)
