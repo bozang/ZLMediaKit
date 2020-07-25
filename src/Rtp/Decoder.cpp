@@ -58,7 +58,6 @@ int DecoderImp::input(const uint8_t *data, int bytes){
 }
 
 DecoderImp::DecoderImp(const Decoder::Ptr &decoder, MediaSinkInterface *sink){
-<<<<<<< HEAD
 #ifdef ENABLE_G7112AAC
 	InitParam initParam;
 	initParam.u32AudioSamplerate = 8000;
@@ -67,8 +66,6 @@ DecoderImp::DecoderImp(const Decoder::Ptr &decoder, MediaSinkInterface *sink){
 	initParam.ucAudioCodec = Law_ALaw;
 	handle = Easy_AACEncoder_Init(initParam);
 #endif
-=======
->>>>>>> 3c052ba3e6abcea87325530c12e6906c8b51cecd
     _decoder = decoder;
     _sink = sink;
     _decoder->setOnDecode([this](int stream,int codecid,int flags,int64_t pts,int64_t dts,const void *data,int bytes){
@@ -197,7 +194,6 @@ void DecoderImp::onDecode(int stream,int codecid,int flags,int64_t pts,int64_t d
                 //获取到音频
                 _codecid_audio = codecid;
                 InfoL<< "got audio track: G711";
-<<<<<<< HEAD
 #ifdef ENABLE_G7112AAC
 				auto track = std::make_shared<AACTrack>();
 				onTrack(track);
@@ -206,18 +202,12 @@ void DecoderImp::onDecode(int stream,int codecid,int flags,int64_t pts,int64_t d
                 auto track = std::make_shared<G711Track>(codec, 8000, 1, 16);
                 onTrack(track);
 #endif
-=======
-                //G711传统只支持 8000/1/16的规格，FFmpeg貌似做了扩展，但是这里不管它了
-                auto track = std::make_shared<G711Track>(codec, 8000, 1, 16);
-                onTrack(track);
->>>>>>> 3c052ba3e6abcea87325530c12e6906c8b51cecd
             }
 
             if (codecid != _codecid_audio) {
                 WarnL<< "audio track change to G711 from codecid:" << getCodecName(_codecid_audio);
                 return;
             }
-<<<<<<< HEAD
 #ifdef ENABLE_G7112AAC
 			bG711ABufferSize = bytes;
 			int bAACBufferSize = 4 * bG711ABufferSize;//提供足够大的缓冲区
@@ -237,11 +227,6 @@ void DecoderImp::onDecode(int stream,int codecid,int flags,int64_t pts,int64_t d
             frame->setCodec(codec);
             onFrame(frame);
 #endif
-=======
-            auto frame = std::make_shared<G711FrameNoCacheAble>((char *) data, bytes, dts);
-            frame->setCodec(codec);
-            onFrame(frame);
->>>>>>> 3c052ba3e6abcea87325530c12e6906c8b51cecd
             break;
         }
         default:
