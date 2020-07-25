@@ -67,3 +67,9 @@
 *.filters
 *.sln
 /cmake_install.cmake
+*.exe
+*.user
+/packages
+/CSharpServer/.vs/CSharpServer/v15
+/CSharpServer/bin/x86/Debug
+/CSharpServer/obj
