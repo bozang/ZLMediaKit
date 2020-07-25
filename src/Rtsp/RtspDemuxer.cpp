@@ -13,10 +13,7 @@
 #include "RtspDemuxer.h"
 #include "Util/base64.h"
 #include "Extension/Factory.h"
-<<<<<<< HEAD
 #include "Extension/AAC.h"
-=======
->>>>>>> 3c052ba3e6abcea87325530c12e6906c8b51cecd
 
 using namespace std;
 
@@ -68,16 +65,11 @@ bool RtspDemuxer::inputRtp(const RtpPacket::Ptr & rtp) {
 }
 
 
-<<<<<<< HEAD
 void RtspDemuxer::makeAudioTrack(const SdpTrack::Ptr &audio, bool AACTranscode) {
-=======
-void RtspDemuxer::makeAudioTrack(const SdpTrack::Ptr &audio) {
->>>>>>> 3c052ba3e6abcea87325530c12e6906c8b51cecd
     //生成Track对象
     _audioTrack = dynamic_pointer_cast<AudioTrack>(Factory::getTrackBySdp(audio));
     if(_audioTrack){
         //生成RtpCodec对象以便解码rtp
-<<<<<<< HEAD
         _audioRtpDecoder = Factory::getRtpDecoderByTrack(_audioTrack, AACTranscode);
         if(_audioRtpDecoder){
             //设置rtp解码器代理，生成的frame写入该Track
@@ -85,11 +77,6 @@ void RtspDemuxer::makeAudioTrack(const SdpTrack::Ptr &audio) {
 			{
 				_audioTrack = std::make_shared<AACTrack>();
 			}
-=======
-        _audioRtpDecoder = Factory::getRtpDecoderByTrack(_audioTrack);
-        if(_audioRtpDecoder){
-            //设置rtp解码器代理，生成的frame写入该Track
->>>>>>> 3c052ba3e6abcea87325530c12e6906c8b51cecd
             _audioRtpDecoder->addDelegate(_audioTrack);
             onAddTrack(_audioTrack);
         } else{
