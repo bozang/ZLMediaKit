@@ -9,10 +9,6 @@
  */
 
 #include "AACRtp.h"
-<<<<<<< HEAD
-#define AAC_MAX_FRAME_SIZE (2 * 1024)
-=======
->>>>>>> 3c052ba3e6abcea87325530c12e6906c8b51cecd
 
 namespace mediakit{
 
@@ -90,34 +86,6 @@ bool AACRtpDecoder::inputRtp(const RtpPacket::Ptr &rtppack, bool key_pos) {
     //rtp数据开始部分
     uint8_t *ptr = (uint8_t *) rtppack->data() + rtppack->offset;
     //rtp数据末尾
-<<<<<<< HEAD
-    const uint8_t *end = (uint8_t *) rtppack->data() + rtppack->size();
-
-    //首2字节表示Au-Header的个数，单位bit，所以除以16得到Au-Header个数
-    const uint16_t au_header_count = ((ptr[0] << 8) | ptr[1]) >> 4;
-    //忽略Au-Header区
-    ptr += 2 + au_header_count * 2;
-
-    while (ptr < end) {
-        auto size = (uint32_t) (end - ptr);
-        if (size > AAC_MAX_FRAME_SIZE) {
-            size = AAC_MAX_FRAME_SIZE;
-        }
-        if (_frame->size() + size > AAC_MAX_FRAME_SIZE) {
-            //数据太多了，先清空
-            flushData();
-        }
-        //追加aac数据
-        _frame->_buffer.append((char *) ptr, size);
-        _frame->_dts = rtppack->timeStamp;
-        ptr += size;
-    }
-
-    if (rtppack->mark) {
-        //最后一个rtp分片
-        flushData();
-    }
-=======
     uint8_t *end = (uint8_t *) rtppack->data() + rtppack->size();
     //首2字节表示Au-Header的个数，单位bit，所以除以16得到Au-Header个数
     uint16_t au_header_count = ((ptr[0] << 8) | ptr[1]) >> 4;
@@ -162,19 +130,10 @@ bool AACRtpDecoder::inputRtp(const RtpPacket::Ptr &rtppack, bool key_pos) {
     }
     //记录上次时间戳
     _last_dts = rtppack->timeStamp;
->>>>>>> 3c052ba3e6abcea87325530c12e6906c8b51cecd
     return false;
 }
 
 void AACRtpDecoder::flushData() {
-<<<<<<< HEAD
-    if (_frame->_buffer.empty()) {
-        //没有有效数据
-        return;
-    }
-
-=======
->>>>>>> 3c052ba3e6abcea87325530c12e6906c8b51cecd
     //插入adts头
     char adts_header[32] = {0};
     auto size = dumpAacConfig(_aac_cfg, _frame->_buffer.size(), (uint8_t *) adts_header, sizeof(adts_header));
