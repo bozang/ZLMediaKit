@@ -19,18 +19,11 @@
 #include "G711Rtp.h"
 #include "H265Rtp.h"
 #include "Common/Parser.h"
-<<<<<<< HEAD
 #include "AACRtpTranscode.h"
 
 namespace mediakit{
 
 Track::Ptr Factory::getTrackBySdp(const SdpTrack::Ptr &track/*, bool AACTranscode*/) {
-=======
-
-namespace mediakit{
-
-Track::Ptr Factory::getTrackBySdp(const SdpTrack::Ptr &track) {
->>>>>>> 3c052ba3e6abcea87325530c12e6906c8b51cecd
     if (strcasecmp(track->_codec.data(), "mpeg4-generic") == 0) {
         string aac_cfg_str = FindField(track->_fmtp.data(), "config=", nullptr);
         if (aac_cfg_str.empty()) {
@@ -51,24 +44,18 @@ Track::Ptr Factory::getTrackBySdp(const SdpTrack::Ptr &track) {
     }
 
     if (strcasecmp(track->_codec.data(), "PCMA") == 0) {
-<<<<<<< HEAD
 		//if (AACTranscode)
 		//{
 		//	return std::make_shared<AACTrack>();
 		//}
-=======
->>>>>>> 3c052ba3e6abcea87325530c12e6906c8b51cecd
         return std::make_shared<G711Track>(CodecG711A, track->_samplerate, track->_channel, 16);
     }
 
     if (strcasecmp(track->_codec.data(), "PCMU") == 0) {
-<<<<<<< HEAD
 		//if (AACTranscode)
 		//{
 		//	return std::make_shared<AACTrack>();
 		//}
-=======
->>>>>>> 3c052ba3e6abcea87325530c12e6906c8b51cecd
         return std::make_shared<G711Track>(CodecG711U,  track->_samplerate, track->_channel, 16);
     }
 
@@ -145,26 +132,18 @@ RtpCodec::Ptr Factory::getRtpEncoderBySdp(const Sdp::Ptr &sdp) {
     }
 }
 
-<<<<<<< HEAD
 RtpCodec::Ptr Factory::getRtpDecoderByTrack(const Track::Ptr &track, bool AACTranscode) {
-=======
-RtpCodec::Ptr Factory::getRtpDecoderByTrack(const Track::Ptr &track) {
->>>>>>> 3c052ba3e6abcea87325530c12e6906c8b51cecd
     switch (track->getCodecId()){
         case CodecH264 : return std::make_shared<H264RtpDecoder>();
         case CodecH265 : return std::make_shared<H265RtpDecoder>();
         case CodecAAC : return std::make_shared<AACRtpDecoder>(track->clone());
         case CodecG711A :
-<<<<<<< HEAD
         case CodecG711U : 
 			if (AACTranscode)
 			{
 				return std::make_shared<AACRtpTranscodeDecoder>(track->clone());
 			}
 			return std::make_shared<G711RtpDecoder>(track->getCodecId());
-=======
-        case CodecG711U : return std::make_shared<G711RtpDecoder>(track->getCodecId());
->>>>>>> 3c052ba3e6abcea87325530c12e6906c8b51cecd
         default : WarnL << "暂不支持该CodecId:" << track->getCodecName(); return nullptr;
     }
 }
