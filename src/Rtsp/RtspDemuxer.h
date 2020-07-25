@@ -39,7 +39,11 @@ public:
      */
     bool inputRtp(const RtpPacket::Ptr &rtp);
 private:
+<<<<<<< HEAD
     void makeAudioTrack(const SdpTrack::Ptr &audio, bool AACTranscode = true);
+=======
+    void makeAudioTrack(const SdpTrack::Ptr &audio);
+>>>>>>> 3c052ba3e6abcea87325530c12e6906c8b51cecd
     void makeVideoTrack(const SdpTrack::Ptr &video);
     void loadSdp(const SdpParser &parser);
 private:

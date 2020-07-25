@@ -52,8 +52,11 @@ option(ENABLE_API "Enable C API SDK" true)
 option(ENABLE_CXX_API "Enable C++ API SDK" false)
 option(ENABLE_TESTS "Enable Tests" true)
 option(ENABLE_SERVER "Enable Server" true)
+<<<<<<< HEAD
 option(ENABLE_G7112AAC "Enable G7112AAC" true)
 
+=======
+>>>>>>> 3c052ba3e6abcea87325530c12e6906c8b51cecd
 
 set(LINK_LIB_LIST zlmediakit zltoolkit)
 
@@ -164,6 +167,7 @@ if(ENABLE_RTPPROXY AND ENABLE_HLS)
     list(APPEND CXX_API_TARGETS rtp)
 endif()
 
+<<<<<<< HEAD
 #添加音频转码库用于g711实时转aac
 if(ENABLE_G7112AAC)
     message(STATUS "ENABLE_G7112AAC defined")
@@ -176,6 +180,8 @@ if(ENABLE_G7112AAC)
     list(APPEND CXX_API_TARGETS aacEncoder)
 endif()
 
+=======
+>>>>>>> 3c052ba3e6abcea87325530c12e6906c8b51cecd
 #收集源代码
 file(GLOB ToolKit_src_list ${ToolKit_Root}/*/*.cpp ${ToolKit_Root}/*/*.h ${ToolKit_Root}/*/*.c)
 if(IOS)
