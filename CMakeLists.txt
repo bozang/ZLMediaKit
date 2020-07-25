@@ -52,6 +52,8 @@ option(ENABLE_API "Enable C API SDK" true)
 option(ENABLE_CXX_API "Enable C++ API SDK" false)
 option(ENABLE_TESTS "Enable Tests" true)
 option(ENABLE_SERVER "Enable Server" true)
+option(ENABLE_G7112AAC "Enable G7112AAC" true)
+
 
 set(LINK_LIB_LIST zlmediakit zltoolkit)
 
@@ -160,6 +162,18 @@ if(ENABLE_RTPPROXY AND ENABLE_HLS)
     add_definitions(-DENABLE_RTPPROXY)
     list(APPEND LINK_LIB_LIST rtp)
     list(APPEND CXX_API_TARGETS rtp)
+endif()
+
+#添加音频转码库用于g711实时转aac
+if(ENABLE_G7112AAC)
+    message(STATUS "ENABLE_G7112AAC defined")
+	include_directories(${MediaKit_Root}/AacEncoder/include)
+    aux_source_directory(${MediaKit_Root}/AacEncoder/libfaac src_aacEncoder)
+    aux_source_directory(${MediaKit_Root}/AacEncoder/src src_aacEncoder)
+    add_library(aacEncoder STATIC ${src_aacEncoder})
+	add_definitions(-DENABLE_G7112AAC)
+    list(APPEND LINK_LIB_LIST aacEncoder)
+    list(APPEND CXX_API_TARGETS aacEncoder)
 endif()
 
 #收集源代码

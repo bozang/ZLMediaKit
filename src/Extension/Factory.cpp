@@ -19,10 +19,11 @@
 #include "G711Rtp.h"
 #include "H265Rtp.h"
 #include "Common/Parser.h"
+#include "AACRtpTranscode.h"
 
 namespace mediakit{
 
-Track::Ptr Factory::getTrackBySdp(const SdpTrack::Ptr &track) {
+Track::Ptr Factory::getTrackBySdp(const SdpTrack::Ptr &track/*, bool AACTranscode*/) {
     if (strcasecmp(track->_codec.data(), "mpeg4-generic") == 0) {
         string aac_cfg_str = FindField(track->_fmtp.data(), "config=", nullptr);
         if (aac_cfg_str.empty()) {
@@ -43,10 +44,18 @@ Track::Ptr Factory::getTrackBySdp(const SdpTrack::Ptr &track) {
     }
 
     if (strcasecmp(track->_codec.data(), "PCMA") == 0) {
+		//if (AACTranscode)
+		//{
+		//	return std::make_shared<AACTrack>();
+		//}
         return std::make_shared<G711Track>(CodecG711A, track->_samplerate, track->_channel, 16);
     }
 
     if (strcasecmp(track->_codec.data(), "PCMU") == 0) {
+		//if (AACTranscode)
+		//{
+		//	return std::make_shared<AACTrack>();
+		//}
         return std::make_shared<G711Track>(CodecG711U,  track->_samplerate, track->_channel, 16);
     }
 
@@ -123,13 +132,18 @@ RtpCodec::Ptr Factory::getRtpEncoderBySdp(const Sdp::Ptr &sdp) {
     }
 }
 
-RtpCodec::Ptr Factory::getRtpDecoderByTrack(const Track::Ptr &track) {
+RtpCodec::Ptr Factory::getRtpDecoderByTrack(const Track::Ptr &track, bool AACTranscode) {
     switch (track->getCodecId()){
         case CodecH264 : return std::make_shared<H264RtpDecoder>();
         case CodecH265 : return std::make_shared<H265RtpDecoder>();
         case CodecAAC : return std::make_shared<AACRtpDecoder>(track->clone());
         case CodecG711A :
-        case CodecG711U : return std::make_shared<G711RtpDecoder>(track->getCodecId());
+        case CodecG711U : 
+			if (AACTranscode)
+			{
+				return std::make_shared<AACRtpTranscodeDecoder>(track->clone());
+			}
+			return std::make_shared<G711RtpDecoder>(track->getCodecId());
         default : WarnL << "暂不支持该CodecId:" << track->getCodecName(); return nullptr;
     }
 }

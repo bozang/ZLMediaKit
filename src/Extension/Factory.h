@@ -28,7 +28,7 @@ public:
     /**
      * 根据sdp生成Track对象
      */
-    static Track::Ptr getTrackBySdp(const SdpTrack::Ptr &track);
+    static Track::Ptr getTrackBySdp(const SdpTrack::Ptr &track/*, bool AACTranscode = false*/);
 
     /**
      * 根据sdp生成rtp编码器
@@ -39,7 +39,7 @@ public:
     /**
      * 根据Track生成Rtp解包器
      */
-    static RtpCodec::Ptr getRtpDecoderByTrack(const Track::Ptr &track);
+    static RtpCodec::Ptr getRtpDecoderByTrack(const Track::Ptr &track, bool AACTranscode=false);
 
 
     ////////////////////////////////rtmp相关//////////////////////////////////

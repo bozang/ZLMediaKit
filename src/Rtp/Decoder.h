@@ -15,6 +15,9 @@
 #include <memory>
 #include <functional>
 #include "Common/MediaSink.h"
+#if defined(ENABLE_G7112AAC)
+#include "EasyAACEncoderAPI.h"
+#endif
 
 using namespace std;
 namespace mediakit {
@@ -69,6 +72,12 @@ private:
     FrameMerger _merger;
     int _codecid_video = 0;
     int _codecid_audio = 0;
+#if defined(ENABLE_G7112AAC)
+	void* handle;
+	int bG711ABufferSize;
+	unsigned int out_len;
+	unsigned char *pAACBuffer;
+#endif
 };
 
 }//namespace mediakit

@@ -58,6 +58,14 @@ int DecoderImp::input(const uint8_t *data, int bytes){
 }
 
 DecoderImp::DecoderImp(const Decoder::Ptr &decoder, MediaSinkInterface *sink){
+#ifdef ENABLE_G7112AAC
+	InitParam initParam;
+	initParam.u32AudioSamplerate = 8000;
+	initParam.ucAudioChannel = 1;
+	initParam.u32PCMBitSize = 16;
+	initParam.ucAudioCodec = Law_ALaw;
+	handle = Easy_AACEncoder_Init(initParam);
+#endif
     _decoder = decoder;
     _sink = sink;
     _decoder->setOnDecode([this](int stream,int codecid,int flags,int64_t pts,int64_t dts,const void *data,int bytes){
@@ -186,18 +194,39 @@ void DecoderImp::onDecode(int stream,int codecid,int flags,int64_t pts,int64_t d
                 //获取到音频
                 _codecid_audio = codecid;
                 InfoL<< "got audio track: G711";
+#ifdef ENABLE_G7112AAC
+				auto track = std::make_shared<AACTrack>();
+				onTrack(track);
+#else
                 //G711传统只支持 8000/1/16的规格，FFmpeg貌似做了扩展，但是这里不管它了
                 auto track = std::make_shared<G711Track>(codec, 8000, 1, 16);
                 onTrack(track);
+#endif
             }
 
             if (codecid != _codecid_audio) {
                 WarnL<< "audio track change to G711 from codecid:" << getCodecName(_codecid_audio);
                 return;
             }
+#ifdef ENABLE_G7112AAC
+			bG711ABufferSize = bytes;
+			int bAACBufferSize = 4 * bG711ABufferSize;//提供足够大的缓冲区
+			pAACBuffer = (unsigned char*)malloc(bAACBufferSize * sizeof(unsigned char));
+			out_len = 0;
+			if (Easy_AACEncoder_Encode(handle, (unsigned char*)data, bG711ABufferSize, pAACBuffer, &out_len) > 0)
+			{
+				//InfoL << "translate track from G711 to aac：success";
+				onFrame(std::make_shared<AACFrameNoCacheAble>((char *)pAACBuffer, out_len, dts, 0, 7));
+			}
+			else
+			{
+				//WarnL << "translate track from G711 to aac：fail";
+			}
+#else
             auto frame = std::make_shared<G711FrameNoCacheAble>((char *) data, bytes, dts);
             frame->setCodec(codec);
             onFrame(frame);
+#endif
             break;
         }
         default:
