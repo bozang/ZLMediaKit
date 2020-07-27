@@ -413,12 +413,12 @@ int main(int argc, char *argv[]) {
     free(ini_path);
     free(ssl_path);
 
-    mk_http_server_start(80, 0);
-    mk_http_server_start(443, 1);
+    mk_http_server_start(8500, 0);
+    mk_http_server_start(1443, 1);
     mk_rtsp_server_start(554, 0);
     mk_rtmp_server_start(1935, 0);
     mk_shell_server_start(9000);
-    mk_rtp_server_start(10000);
+    mk_rtp_server_start(20000,"1");
 
     mk_events events = {
             .on_mk_media_changed = on_mk_media_changed,
